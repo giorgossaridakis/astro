@@ -13,7 +13,7 @@
 
 const float PI=3.1415926;
 const float ZENITH=-.83;
-const double version=1.6;
+const double version=1.7;
 const int MAXSTRING=50;
 
 const char *daysofweek[]= { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }, *monthnames[]= { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, *planetdayrulers[]= { "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn" }, *planetnames[]={ "Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars" };
@@ -57,13 +57,13 @@ int main(int argc, char *argv[])
     cin >> lat >> lng >> localOffset;
     ofstream datafile(datafilepath, ios_base::app);
     datafile << country << " " << city << " " << lat << " " << lng << " " << region << " " << localOffset << endl; }
-   else
+   else {
     cout << "country:" << country << " city:" << city << " region:" << region << endl;
-   
-   cout << "latitude:" << lat << " longtitude:" << lng << " GMT";
-   if (localOffset>0)
-    cout << "+";
-   cout << localOffset << endl;
+    cout << "latitude:" << lat << " longtitude:" << lng << " GMT";
+    if (localOffset>0)
+     cout << "+";
+    cout << localOffset << endl;
+   }
    // start calculated output
    cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << ", the time is:"  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << ". ";
    cout << "Julian day:" << (1461 * (now->tm_year + 1900 + 4800 + (now->tm_mon-14)/12))/4 + (367 * (now->tm_mon-2-12 * ((now->tm_mon - 14)/12)))/12 - (3 * ((now->tm_year + 1900 + 4900 + (now->tm_mon - 14)/12)/100))/4 + now->tm_mday - 32075 << endl;
