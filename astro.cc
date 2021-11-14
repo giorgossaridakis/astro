@@ -7,17 +7,24 @@
 #include <string.h>
 #include <ctype.h>
 #include <fstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 
-#define PI 3.1415926
-#define ZENITH -.83
+const float PI=3.1415926;
+const float ZENITH=-.83;
+const double version=1.6;
+const int MAXSTRING=50;
 
 const char *daysofweek[]= { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }, *monthnames[]= { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, *planetdayrulers[]= { "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn" }, *planetnames[]={ "Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars" };
 
-float calculateSunriseSunset(int year,int month,int day,float lat, float lng,int localOffset, int daylightSavings, int flag);
-float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,int localOffset, int daylightSavings, int flag, double &hours, double &minutes);
-int ReadLocationData(const char location_name[], float *lat, float *lng, int *localOffset)
+float calculateSunriseSunset(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag);
+float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag, double &hours, double &minutes);
+int ReadLocationData(const char city_name[], float *lat, float *lng, double *localOffset)
 ;
 void fixupperlowercharsforlocationanme(char *t);
+char datafilepath[500];
+char country[MAXSTRING], city[MAXSTRING], region[MAXSTRING];
 
 using namespace std;
     
@@ -25,46 +32,46 @@ int main(int argc, char *argv[])
 {
    float lat=0, lng=0;
    double sunrise_hours, sunrise_minutes, sunset_hours, sunset_minutes;
-   int localOffset;
+   double localOffset;
    float hourlength, daylength, nightlength, sunriseT, sunsetT;
    float dayhourlenth, nighthourlength, hournow;
    time_t t = std::time(0);   // get time now
    tm* now = std::localtime(&t);
    int i, daynightselector, planetary_hours[12][2]; // 0 day, 1 night
    int planet_selector, planetary_hour;
-   char dayname[20], location_name[25];
+   char dayname[20], city_name[MAXSTRING];
+   struct passwd *pw = getpwuid(getuid());
+   sprintf(datafilepath, "%s/astro.dat", pw->pw_dir);
     
-   cout << "Astro Calculator v1.4, with location data" << endl;
-   cout << "-----------------------------------------" << endl;
-   if (argc<2 || ReadLocationData(argv[1], &lat, &lng, &localOffset)==-1) {
-    if (argc<2) {
-     cout << "location name:";
-    cin  >> location_name; }
-    else 
-     strcpy(location_name, argv[1]);
-    if (ReadLocationData(location_name, &lat, &lng, &localOffset)==-1) {
-     fixupperlowercharsforlocationanme(location_name);
-     cout << "new location:" << location_name << endl;
-     cout << "input latitude, longtitude, timezone:";
-     scanf("%f,%f,%d", &lat, &lng, &localOffset);
-     ofstream datafile("astro.dat", ios::app);
-     if (!datafile && !lat &&!lng)
-      cout << "unable to append to datafile" << endl;
-     if (lat && lng && datafile.is_open())
-   datafile << location_name << " " << lat << " " << lng << " " << localOffset << endl; } }
-   else {
-    fixupperlowercharsforlocationanme(const_cast <char *> (argv[1]));
-    cout << "location name:" << argv[1] << endl;
-   ReadLocationData(argv[1], &lat, &lng, &localOffset); }
-   cout << "latitude:" << lat << " longtitude:" << lng << " time zone:" << localOffset << endl;
+   cout << "----------------------\n-Astro Calculator " << version << "-" << endl;
+   cout << "----------------------" << endl;
+    
+   if (argc>1)
+    strcpy(city_name, argv[1]);
+   fixupperlowercharsforlocationanme(city_name);
+   if (ReadLocationData(city_name, &lat, &lng, &localOffset)==-1) {
+    cout << "country city region:";
+    cin >> country >> city >> region;
+    fflush(stdin);
+    cout << "latitude longtitude timezone (relative to GMT):";
+    cin >> lat >> lng >> localOffset;
+    ofstream datafile(datafilepath, ios_base::app);
+    datafile << country << " " << city << " " << lat << " " << lng << " " << region << " " << localOffset << endl; }
+   else
+    cout << "country:" << country << " city:" << city << " region:" << region << endl;
+   
+   cout << "latitude:" << lat << " longtitude:" << lng << " GMT";
+   if (localOffset>0)
+    cout << "+";
+   cout << localOffset << endl;
    // start calculated output
-   cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << ", the time is: "  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << ". ";
+   cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << ", the time is:"  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << ". ";
    cout << "Julian day:" << (1461 * (now->tm_year + 1900 + 4800 + (now->tm_mon-14)/12))/4 + (367 * (now->tm_mon-2-12 * ((now->tm_mon - 14)/12)))/12 - (3 * ((now->tm_year + 1900 + 4900 + (now->tm_mon - 14)/12)/100))/4 + now->tm_mday - 32075 << endl;
    // calculate sunrise, sunset
    sunriseT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 0, sunrise_hours, sunrise_minutes);
-   printf("sunrise:%.0f.%.0f, ", sunrise_hours, sunrise_minutes); //%02.0f
+   printf("sunrise:%02.0f.%02.0f, ", sunrise_hours, sunrise_minutes); //%02.0f
    sunsetT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 1, sunset_hours, sunset_minutes);
-   printf("sunset:%.0f.%.0f\n", sunset_hours, sunset_minutes);
+   printf("sunset:%02.0f.%02.0f\n", sunset_hours, sunset_minutes);
    daylength=sunsetT-sunriseT; nightlength=24-sunsetT+sunriseT;
    dayhourlenth=(daylength/12)*60;
    printf("day is %f hours long, length of hour is %f minutes\n", daylength, dayhourlenth);
@@ -76,7 +83,7 @@ int main(int argc, char *argv[])
     --now->tm_wday; // remove one day, day is calculated from sunrise to sunset
    if (hournow<sunriseT && !now->tm_wday)
     now->tm_wday=6;
-   printf("ruler of this day is:%s", planetdayrulers[now->tm_wday]);
+   printf("planetary ruler of this day is:%s", planetdayrulers[now->tm_wday]);
    // find place of planet day ruler in hour sequence rulers
    planet_selector=now->tm_wday;
    strcpy(dayname, planetdayrulers[planet_selector]);
@@ -113,7 +120,7 @@ int main(int argc, char *argv[])
  return 0;
 }
 
-float calculateSunriseSunset(int year,int month,int day,float lat, float lng,int localOffset, int daylightSavings, int flag)
+float calculateSunriseSunset(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag)
 {
     /*
     localOffset will be <0 for western hemisphere and >0 for eastern hemisphere
@@ -167,7 +174,7 @@ float calculateSunriseSunset(int year,int month,int day,float lat, float lng,int
     return UT + localOffset + daylightSavings;
 }
 
-float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,int localOffset, int daylightSavings, int flag, double &hours, double &minutes)
+float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag, double &hours, double &minutes)
 {
   float localT;
   
@@ -181,37 +188,24 @@ float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,in
  return localT;
 }
 
-int ReadLocationData(const char location_name[], float *lat, float *lng, int *localOffset) // file format location latitude longtitude time zone
+int ReadLocationData(const char city_name[], float *lat, float *lng, double *localOffset) // file format location latitude longtitude time zone
 {
   int i,n;
-  char tdata[20], tlocation[strlen(location_name)];
   ifstream datafile;
   
-   datafile.open("./astro.dat");
-   if (!datafile.is_open())
-    datafile.open("/usr/bin/astro.dat");
-   if (!datafile.is_open()) {
-    printf("datafile not found\n");
-   exit (-1); }
-   
-    strcpy(tlocation, location_name);
-    for (i=0;i<strlen(location_name);i++)
-     tlocation[i]=tolower(tlocation[i]);
+   datafile.open(datafilepath);
 
     while (!datafile.eof()) {
-     datafile >> tdata >> *lat >> *lng >> *localOffset;
-     for (i=0;i<strlen(location_name);i++)
-      tdata[i]=tolower(tdata[i]);
-     if (!strcmp(tdata, tlocation))
-      break; 
-     else {
-      *lat=0;
-    *lng=0; } }
+     datafile >> country >> city >> *lat >> *lng >> region >> *localOffset;
+     fixupperlowercharsforlocationanme(city);
+     if (!strcmp(city, city_name))
+      break;
+     *lat=*lng=0;
+    }
     
-    if (!*lat && !*lng) 
+    datafile.close();
+    if (*lat==0 && *lng==0)
      return -1;
-   
-  datafile.close();
   
  return 0;
 }
