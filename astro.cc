@@ -1,19 +1,17 @@
-// astro calculator, moon phase and planetary day&time
+// astro calculator, moon phase and planetary day&time rulers
 #include <stdio.h>
 #include <math.h>
-#include <ctime>
-#include <iostream>
-#include <math.h>
 #include <string.h>
-#include <ctype.h>
-#include <fstream>
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <iostream>
+#include <fstream>
+#include <ctime>
 
 const float PI=3.1415926;
 const float ZENITH=-.83;
-const double version=1.7;
+const double version=1.8;
 const int MAXSTRING=50;
 
 const char *daysofweek[]= { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }, *monthnames[]= { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, *planetdayrulers[]= { "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn" }, *planetnames[]={ "Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars" };
@@ -30,7 +28,7 @@ using namespace std;
     
 int main(int argc, char *argv[])
 {
-   float lat=0, lng=0;
+   float lat, lng;
    double sunrise_hours, sunrise_minutes, sunset_hours, sunset_minutes;
    double localOffset;
    float hourlength, daylength, nightlength, sunriseT, sunsetT;
@@ -65,25 +63,25 @@ int main(int argc, char *argv[])
     cout << localOffset << endl;
    }
    // start calculated output
-   cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << ", the time is:"  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << ". ";
-   cout << "Julian day:" << (1461 * (now->tm_year + 1900 + 4800 + (now->tm_mon-14)/12))/4 + (367 * (now->tm_mon-2-12 * ((now->tm_mon - 14)/12)))/12 - (3 * ((now->tm_year + 1900 + 4900 + (now->tm_mon - 14)/12)/100))/4 + now->tm_mday - 32075 << endl;
+   cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << " the time is "  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << endl;
+   cout << "Julian day:" << (1461 * (now->tm_year + 1900 + 4800 + (now->tm_mon-14)/12))/4 + (367 * (now->tm_mon-2-12 * ((now->tm_mon - 14)/12)))/12 - (3 * ((now->tm_year + 1900 + 4900 + (now->tm_mon - 14)/12)/100))/4 + now->tm_mday - 32075;
    // calculate sunrise, sunset
    sunriseT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 0, sunrise_hours, sunrise_minutes);
-   printf("sunrise:%02.0f.%02.0f, ", sunrise_hours, sunrise_minutes); //%02.0f
+   printf(" sunrise:%02.0f.%02.0f ", sunrise_hours, sunrise_minutes); //%02.0f
    sunsetT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 1, sunset_hours, sunset_minutes);
    printf("sunset:%02.0f.%02.0f\n", sunset_hours, sunset_minutes);
    daylength=sunsetT-sunriseT; nightlength=24-sunsetT+sunriseT;
    dayhourlenth=(daylength/12)*60;
-   printf("day is %f hours long, length of hour is %f minutes\n", daylength, dayhourlenth);
+   printf("day length:%f hours planetary hour:%f minutes\n", daylength, dayhourlenth);
    nighthourlength=(nightlength/12)*60;
-   printf("night is %f hours long, length of hour is %f minutes\n",  nightlength, nighthourlength);
+   printf("night length:%f hours planetary hour:%f minutes\n",  nightlength, nighthourlength);
    sunriseT*=60; sunsetT*=60;
    hournow=(float) (now->tm_hour*3600+now->tm_min*60+now->tm_sec)/60;
    if (hournow<sunriseT && now->tm_wday)
     --now->tm_wday; // remove one day, day is calculated from sunrise to sunset
    if (hournow<sunriseT && !now->tm_wday)
     now->tm_wday=6;
-   printf("planetary ruler of this day is:%s", planetdayrulers[now->tm_wday]);
+   printf("planetary ruler of this day:%s", planetdayrulers[now->tm_wday]);
    // find place of planet day ruler in hour sequence rulers
    planet_selector=now->tm_wday;
    strcpy(dayname, planetdayrulers[planet_selector]);
@@ -115,7 +113,7 @@ int main(int argc, char *argv[])
     ++planetary_hour; } }
     if (!planetary_hour)
      planetary_hour=1;
-   printf(", ruler of this hour is:%s\n", planetnames[planetary_hours[planetary_hour-1][daynightselector]]);
+   printf(" ruler of this hour:%s\n", planetnames[planetary_hours[planetary_hour-1][daynightselector]]);
 
  return 0;
 }
@@ -200,12 +198,11 @@ int ReadLocationData(const char city_name[], float *lat, float *lng, double *loc
      fixupperlowercharsforlocationanme(city);
      if (!strcmp(city, city_name))
       break;
-     *lat=*lng=0;
     }
     
-    datafile.close();
-    if (*lat==0 && *lng==0)
+    if (datafile.eof())
      return -1;
+    datafile.close();
   
  return 0;
 }
