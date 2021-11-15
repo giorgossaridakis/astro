@@ -8,10 +8,11 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include "MoonPhase.cpp"
 
 const float PI=3.1415926;
 const float ZENITH=-.83;
-const double version=1.8;
+const double version=1.9;
 const int MAXSTRING=50;
 
 const char *daysofweek[]= { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }, *monthnames[]= { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, *planetdayrulers[]= { "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn" }, *planetnames[]={ "Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars" };
@@ -35,43 +36,41 @@ int main(int argc, char *argv[])
    float dayhourlenth, nighthourlength, hournow;
    time_t t = std::time(0);   // get time now
    tm* now = std::localtime(&t);
+   MoonPhase moon;
+   moon.calculate(t);
    int i, daynightselector, planetary_hours[12][2]; // 0 day, 1 night
    int planet_selector, planetary_hour;
    char dayname[20], city_name[MAXSTRING];
    struct passwd *pw = getpwuid(getuid());
    sprintf(datafilepath, "%s/astro.dat", pw->pw_dir);
     
-   cout << "----------------------\n-Astro Calculator " << version << "-" << endl;
-   cout << "----------------------" << endl;
+   printf("----------------------\n-Astro Calculator %.1f"
+          "-\n----------------------\n", version);
     
    if (argc>1)
     strcpy(city_name, argv[1]);
    fixupperlowercharsforlocationanme(city_name);
    if (ReadLocationData(city_name, &lat, &lng, &localOffset)==-1) {
-    cout << "country city region:";
+    printf("country city region:");
     cin >> country >> city >> region;
     fflush(stdin);
-    cout << "latitude longtitude timezone (relative to GMT):";
+    printf("latitude longtitude timezone (relative to GMT):");
     cin >> lat >> lng >> localOffset;
     ofstream datafile(datafilepath, ios_base::app);
     datafile << country << " " << city << " " << lat << " " << lng << " " << region << " " << localOffset << endl; }
-   else {
-    cout << "country:" << country << " city:" << city << " region:" << region << endl;
-    cout << "latitude:" << lat << " longtitude:" << lng << " GMT";
-    if (localOffset>0)
-     cout << "+";
-    cout << localOffset << endl;
-   }
+   else
+    printf("country:%s city:%s region:%s\nlatitude:%.5f longitude:%.5f GMT%+-.1lf\n", country, city, region, lat, lng, localOffset); 
+   
    // start calculated output
-   cout << daysofweek[now->tm_wday] << ", " << now->tm_mday  << ' ' << monthnames[now->tm_mon]  << ' ' << now->tm_year + 1900 << " the time is "  << now->tm_hour << ":" << now->tm_min << ":" << now->tm_sec << endl;
-   cout << "Julian day:" << (1461 * (now->tm_year + 1900 + 4800 + (now->tm_mon-14)/12))/4 + (367 * (now->tm_mon-2-12 * ((now->tm_mon - 14)/12)))/12 - (3 * ((now->tm_year + 1900 + 4900 + (now->tm_mon - 14)/12)/100))/4 + now->tm_mday - 32075;
-   // calculate sunrise, sunset
+   printf("%s, %d %s %d the time is %d:%d:%d\n", daysofweek[now->tm_wday], now->tm_mday, monthnames[now->tm_mon], now->tm_year + 1900, now->tm_hour, now->tm_min, now->tm_sec);
+   printf("Julian day:%.2f", moon.jDate);
    sunriseT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 0, sunrise_hours, sunrise_minutes);
    printf(" sunrise:%02.0f.%02.0f ", sunrise_hours, sunrise_minutes); //%02.0f
    sunsetT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 1, sunset_hours, sunset_minutes);
    printf("sunset:%02.0f.%02.0f\n", sunset_hours, sunset_minutes);
    daylength=sunsetT-sunriseT; nightlength=24-sunsetT+sunriseT;
    dayhourlenth=(daylength/12)*60;
+   printf("Moon age:%.2f days phase:%s zodiac transit:%s\n", moon.age, moon.phaseName, moon.zodiacName);
    printf("day length:%f hours planetary hour:%f minutes\n", daylength, dayhourlenth);
    nighthourlength=(nightlength/12)*60;
    printf("night length:%f hours planetary hour:%f minutes\n",  nightlength, nighthourlength);
@@ -188,7 +187,6 @@ float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,do
 
 int ReadLocationData(const char city_name[], float *lat, float *lng, double *localOffset) // file format location latitude longtitude time zone
 {
-  int i,n;
   ifstream datafile;
   
    datafile.open(datafilepath);
