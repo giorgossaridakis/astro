@@ -1,31 +1,62 @@
 // astro calculator, moon phase and planetary day&time rulers
+// written by Giorgos Saridakis
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <pwd.h>
+#include <sys/types.h>
 #include <iostream>
 #include <fstream>
 #include <ctime>
 #include "MoonPhase.cpp"
 
+using namespace std;
+
+const double version=2.8;
 const float PI=3.1415926;
 const float ZENITH=-.83;
-const double version=1.9;
 const int MAXSTRING=50;
+const int MAXPATH=1024;
 
 const char *daysofweek[]= { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }, *monthnames[]= { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, *planetdayrulers[]= { "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn" }, *planetnames[]={ "Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars" };
+const char *moonnames[] = { "Wolf", "Snow", "Worm", "Pink", "Flower", "Strawberry", "Buck", "Sturgeon", "Corn", "Hunter", "Beaver", "Cold" };
 
+class NewFullMoon {
+ public:
+  float daysFull;
+  float daysNew;
+  float daysRotation;
+  char moonName[MAXSTRING];
+  NewFullMoon(MoonPhase &tmoon, int month);
+};
+
+// costructor
+NewFullMoon::NewFullMoon( MoonPhase &tmoon, int month )
+{
+  int tphase=(int)(tmoon.phase * 8 + 0.5) % 8;
+  float rotationdays =  ( ( (7*60) + 43 ) / ( 24 * 60 ) ) + 27;
+  float cycledays = 29.5;
+  daysFull = (cycledays / 2) - tmoon.age;
+  daysRotation = rotationdays - tmoon.age + ( (cycledays - rotationdays) / 2); // estimate
+  daysNew = cycledays - tmoon.age;
+  if ( tphase <= 4 ) {
+   daysFull = ( cycledays - tmoon.age ) + ( cycledays / 2 );
+   month = ( month < 11 ) ? month + 1 : 0;
+  }
+  strcpy( moonName, moonnames[month] );
+}
+
+// function declarations
 float calculateSunriseSunset(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag);
 float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,double localOffset, int daylightSavings, int flag, double &hours, double &minutes);
 int ReadLocationData(const char city_name[], float *lat, float *lng, double *localOffset)
 ;
-void fixupperlowercharsforlocationanme(char *t);
-char datafilepath[500];
-char country[MAXSTRING], city[MAXSTRING], region[MAXSTRING];
+char* fixupperlowercharsforlocationanme(char *t);
 
-using namespace std;
+// global variables
+char datafilepath[MAXPATH];
+char country[MAXSTRING], city[MAXSTRING], region[MAXSTRING];
     
 int main(int argc, char *argv[])
 {
@@ -38,49 +69,61 @@ int main(int argc, char *argv[])
    tm* now = std::localtime(&t);
    MoonPhase moon;
    moon.calculate(t);
+   NewFullMoon newfullmoon(moon, now->tm_mon);
    int i, daynightselector, planetary_hours[12][2]; // 0 day, 1 night
    int planet_selector, planetary_hour;
-   char dayname[20], city_name[MAXSTRING];
+   char dayname[MAXSTRING], city_name[MAXSTRING], tstring[MAXSTRING];
    struct passwd *pw = getpwuid(getuid());
-   sprintf(datafilepath, "%s/astro.dat", pw->pw_dir);
+   sprintf(datafilepath, "%s/.astro", pw->pw_dir);
     
-   printf("----------------------\n-Astro Calculator %.1f"
-          "-\n----------------------\n", version);
+   printf("               ----------------------\n               -Astro Calculator %.1f"
+          "-\n               ----------------------\n", version);
     
-   if (argc>1)
+   // read or enquire location data
+   if ( argc > 1 )
     strcpy(city_name, argv[1]);
+   else {
+    printf("city name:");
+    cin >> city_name;
+   }
    fixupperlowercharsforlocationanme(city_name);
-   if (ReadLocationData(city_name, &lat, &lng, &localOffset)==-1) {
+   if ( (ReadLocationData(city_name, &lat, &lng, &localOffset)) == -1 ) {
     printf("country city region:");
     cin >> country >> city >> region;
     fflush(stdin);
     printf("latitude longtitude timezone (relative to GMT):");
     cin >> lat >> lng >> localOffset;
     ofstream datafile(datafilepath, ios_base::app);
-    datafile << country << " " << city << " " << lat << " " << lng << " " << region << " " << localOffset << endl; }
-   else
-    printf("country:%s city:%s region:%s\nlatitude:%.5f longitude:%.5f GMT%+-.1lf\n", country, city, region, lat, lng, localOffset); 
+    datafile << country << " " << city << " " << lat << " " << lng << " " << region << " " << localOffset << endl;
+   }
    
+   // local data and calculations
+   printf("[%s, %.2d %s %d, the time is %.2d:%.2d:%.2d]\n", daysofweek[now->tm_wday], now->tm_mday, monthnames[now->tm_mon], now->tm_year + 1900, now->tm_hour, now->tm_min, now->tm_sec);
+   printf("country:%s city:%s region:%s\nlatitude:%.5f longitude:%.5f GMT%+-.1lf\n", country, city, region, lat, lng, localOffset); 
    // start calculated output
-   printf("%s, %d %s %d the time is %d:%d:%d\n", daysofweek[now->tm_wday], now->tm_mday, monthnames[now->tm_mon], now->tm_year + 1900, now->tm_hour, now->tm_min, now->tm_sec);
    printf("Julian day:%.2f", moon.jDate);
    sunriseT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 0, sunrise_hours, sunrise_minutes);
-   printf(" sunrise:%02.0f.%02.0f ", sunrise_hours, sunrise_minutes); //%02.0f
+   printf(" sunrise %02.0f:%02.0f ", sunrise_hours, sunrise_minutes); //%02.0f
    sunsetT=AssignSunriseSunsetTime(now->tm_year+1900, now->tm_mon+1, now->tm_mday, lat, lng, localOffset, now->tm_isdst, 1, sunset_hours, sunset_minutes);
-   printf("sunset:%02.0f.%02.0f\n", sunset_hours, sunset_minutes);
+   printf("sunset %02.0f:%02.0f\n", sunset_hours, sunset_minutes);
    daylength=sunsetT-sunriseT; nightlength=24-sunsetT+sunriseT;
    dayhourlenth=(daylength/12)*60;
-   printf("Moon age:%.2f days phase:%s zodiac transit:%s\n", moon.age, moon.phaseName, moon.zodiacName);
-   printf("day length:%f hours planetary hour:%f minutes\n", daylength, dayhourlenth);
+   strcpy(tstring, " ");
+   if ( !strcmp(moon.phaseName, "Full") )
+    sprintf( tstring, " [Full %s Moon] ", moonnames[now->tm_mon] );
+   printf("Moon age:%.2f days phase:%s%s\n", moon.age, moon.phaseName, tstring);
+   printf("zodiac transit:%s rotation in:%.2f days\n", moon.zodiacName, newfullmoon.daysRotation);
+   printf("Full %s Moon in:%.2f days New Moon in:%.2f days\n", newfullmoon.moonName, newfullmoon.daysFull, newfullmoon.daysNew);
+   printf("day:%f hours planetary hour:%f minutes\n", daylength, dayhourlenth);
    nighthourlength=(nightlength/12)*60;
-   printf("night length:%f hours planetary hour:%f minutes\n",  nightlength, nighthourlength);
+   printf("night:%f hours planetary hour:%f minutes\n",  nightlength, nighthourlength);
    sunriseT*=60; sunsetT*=60;
    hournow=(float) (now->tm_hour*3600+now->tm_min*60+now->tm_sec)/60;
    if (hournow<sunriseT && now->tm_wday)
     --now->tm_wday; // remove one day, day is calculated from sunrise to sunset
    if (hournow<sunriseT && !now->tm_wday)
     now->tm_wday=6;
-   printf("planetary ruler of this day:%s", planetdayrulers[now->tm_wday]);
+   printf("planetary ruler of the day:%s", planetdayrulers[now->tm_wday]);
    // find place of planet day ruler in hour sequence rulers
    planet_selector=now->tm_wday;
    strcpy(dayname, planetdayrulers[planet_selector]);
@@ -112,7 +155,7 @@ int main(int argc, char *argv[])
     ++planetary_hour; } }
     if (!planetary_hour)
      planetary_hour=1;
-   printf(" ruler of this hour:%s\n", planetnames[planetary_hours[planetary_hour-1][daynightselector]]);
+   printf(" | hour:%s\n", planetnames[planetary_hours[planetary_hour-1][daynightselector]]);
 
  return 0;
 }
@@ -185,27 +228,28 @@ float AssignSunriseSunsetTime(int year,int month,int day,float lat, float lng,do
  return localT;
 }
 
+// extract city data from datafile
 int ReadLocationData(const char city_name[], float *lat, float *lng, double *localOffset) // file format location latitude longtitude time zone
 {
   ifstream datafile;
   
-   datafile.open(datafilepath);
-
-    while (!datafile.eof()) {
+   datafile.open(datafilepath, ios::in);
+   if ( !datafile ) 
+    return 0;
+   
+    while ( datafile ) {
      datafile >> country >> city >> *lat >> *lng >> region >> *localOffset;
      fixupperlowercharsforlocationanme(city);
-     if (!strcmp(city, city_name))
-      break;
+     if ( !strcmp(city, city_name) )
+      return 1;
     }
-    
-    if (datafile.eof())
-     return -1;
     datafile.close();
   
- return 0;
+ return -1;
 }
 
-void fixupperlowercharsforlocationanme(char *t)
+// first letter upper, rest lower
+char* fixupperlowercharsforlocationanme(char *t)
 {
   int i;
   
@@ -213,4 +257,5 @@ void fixupperlowercharsforlocationanme(char *t)
    for (i=1;i<strlen(t);i++)
     t[i]=tolower(t[i]);
    
+ return t;
 }
