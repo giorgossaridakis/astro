@@ -37,9 +37,9 @@ NewFullMoon::NewFullMoon( MoonPhase &tmoon, int month )
   int tphase=(int)(tmoon.phase * 8 + 0.5) % 8;
   float rotationdays =  ( ( (7*60) + 43 ) / ( 24 * 60 ) ) + 27;
   float cycledays = 29.5;
-  daysFull = (cycledays / 2) - tmoon.age;
   daysRotation = rotationdays - tmoon.age + ( (cycledays - rotationdays) / 2); // estimate
   daysNew = cycledays - tmoon.age;
+  daysFull = daysNew + (cycledays / 2);
   if ( tphase <= 4 ) {
    daysFull = ( cycledays - tmoon.age ) + ( cycledays / 2 );
    month = ( month < 11 ) ? month + 1 : 0;
