@@ -13,7 +13,7 @@
 
 using namespace std;
 
-const double version=2.8;
+const double version=3.0;
 const float PI=3.1415926;
 const float ZENITH=-.83;
 const int MAXSTRING=50;
@@ -43,7 +43,11 @@ NewFullMoon::NewFullMoon( MoonPhase &tmoon, int month )
   daysFull = ( cycledays / 2 ) - tmoon.age;
   if ( tphase >= 4 )
    daysFull = ( cycledays - tmoon.age ) + ( cycledays / 2 );
-  month+= ( month < 11 ) ? 1 : 0;
+  // full moon name for coming month
+  if ( month == 11 )
+   month = 0;
+  else
+   ++month;
   strcpy( moonName, moonnames[month] );
 }
 
