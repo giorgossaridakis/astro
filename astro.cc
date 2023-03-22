@@ -39,11 +39,11 @@ NewFullMoon::NewFullMoon( MoonPhase &tmoon, int month )
   float cycledays = 29.5;
   daysRotation = rotationdays - tmoon.age + ( (cycledays - rotationdays) / 2); // estimate
   daysNew = cycledays - tmoon.age;
-  daysFull = daysNew + (cycledays / 2);
-  if ( tphase <= 4 ) {
+  // New EveningCrescent FirstQuarter WaxingGibbous Full WaningGibbous LastQuarter MorningCrescent
+  daysFull = ( cycledays / 2 ) - tmoon.age;
+  if ( tphase >= 4 )
    daysFull = ( cycledays - tmoon.age ) + ( cycledays / 2 );
-   month = ( month < 11 ) ? month + 1 : 0;
-  }
+  month+= ( month < 11 ) ? 1 : 0;
   strcpy( moonName, moonnames[month] );
 }
 
